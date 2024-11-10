@@ -11,25 +11,14 @@ from django.contrib.auth.models import User
 
 # Import Django's messaging framework to provide feedback to users about actions (e.g., errors, success messages).
 from django.contrib import messages
-import nmap
 
-# Import form handling utilities from Django to manage form submissions and validations.
-from .forms import RegistrationForm, CodeForm, UrlForm
-
-# Import utilities for handling CSRF protection to secure form submissions against CSRF attacks.
-from django.views.decorators.csrf import csrf_exempt
 
 # Import email utilities to send emails from within Django.
-from django.core.mail import send_mail
 from email.mime.text import MIMEText
 
 # Import Django utilities to manage and manipulate template contexts and content safely.
-from django.template import RequestContext
-from django.template.loader import render_to_string
-from django.utils.html import escape, strip_tags
 
 # Import model and utility functions specific to the application for managing scans and validations.
-from .models import ScanResult
 from .models import Test
 from .models import Persona
 from .models import Categoria
@@ -39,8 +28,6 @@ from codepulse.validators import CustomPasswordValidator
 import random
 import smtplib
 import logging
-import re
-import bleach  # Used to sanitize HTML inputs effectively to prevent XSS attacks.
 
 # Import Django's exception classes to handle specific exceptions such as validation errors.
 from django.core.exceptions import ValidationError

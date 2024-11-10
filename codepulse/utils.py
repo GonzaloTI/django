@@ -1,9 +1,6 @@
-from django.http import JsonResponse
-import nmap
+
 import requests
 import logging
-import re
-from codepulse.models import ScanResult  
 
 # This essentailly sets up logging to help me enable tracking of information and errors 
 logger = logging.getLogger(__name__)

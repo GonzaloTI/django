@@ -29,20 +29,6 @@ class CustomUser(AbstractUser):
         help_text="Specific permissions for this user.",
     )
 
-# ScanResult model stores the results of security scans performed on URLs.
-class ScanResult(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    url = models.URLField()
-    scanned_on = models.DateTimeField(auto_now_add=True)
-    xss_detected = models.BooleanField(default=False)
-    sql_injection_detected = models.BooleanField(default=False)
-    csrf_issues_detected = models.BooleanField(default=False)
-    additional_info = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return f"Scan for {self.url} on {self.scanned_on}"
-
-
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100)
 
