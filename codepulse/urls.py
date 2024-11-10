@@ -40,8 +40,6 @@ urlpatterns = [
     
     path('realizar_consulta/', views.realizar_consulta, name='realizar_consulta'),
 
-    # routes to 'scanner' view and named as 'scanner'
-    path('scanner/', views.scanner, name='scanner'),
     
     path('Home_KPI/', views.KPIhome, name='homekpi'),
    

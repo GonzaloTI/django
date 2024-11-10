@@ -33,7 +33,6 @@ from .models import ScanResult
 from .models import Test
 from .models import Persona
 from .models import Categoria
-from .utils import fetch_url, detect_xss_vulnerability, detect_sql_injection
 from codepulse.validators import CustomPasswordValidator
 
 # Import standard libraries and third-party libraries for additional functionalities.
@@ -108,7 +107,7 @@ def register(request):
             user.save() # This saves the user object in the database.
             login(request, user) 
             messages.success(request, 'Email verified successfully!')
-            return redirect('scanner')
+            return redirect('homekpi')
         
         except Exception as e:
             messages.error(request, f'Registration failed: {e}')
@@ -853,22 +852,9 @@ def realizar_consulta(request):
     return render(request, 'kpiparametro.html', context)
 
 
-
-
-
-
-
-
-
 def KPIhome(request):
     return render(request, 'homekpi.html')
     
-
-
-
-
-
-
 
 # this handles the verification of email through a code sent to the user.
 def verify_email(request):
@@ -991,88 +977,9 @@ def user_login(request):
             return render(request, 'login.html', {'error': 'Bad credentials, please try again'}, status=200)
     return render(request, 'login.html')
 
-@login_required
-def scaned_sites(request):
-    scanned_urls = ScanResult.objects.filter(user=request.user)
-    return render(request, 'scaned_sites.html', {  'username': request.user.username, 'scanned_urls': scanned_urls })
-
-    # return render(request, 'scanner.html', {'username': request.user.username})
-
-
-@login_required
-def scanner(request):
-    # this views function handles the scanning of code input for XSS and SQL injection vulnerabilities.
-    # only allows authenticated users to perform scans.
-    # this is to Check if the user is authenticated, proceed only if true.
-    
-    if request.user.is_authenticated:
-        # The core functionality is executed only when the form data is sent via POST method.
-        if request.method == 'POST':
-            # Retrieve the code input from the POST data, defaulting to an empty string if not found.
-            code_input = request.POST.get('code_input', '')
-          
-            
-            # use a custom function to detect any XSS vulnerabilities in the code input.
-            xss_vulnerabilities = detect_xss_vulnerability(code_input)
-            # use another custom function to detect any SQL injection vulnerabilities in the code input.
-            sql_injection_vulnerabilities = detect_sql_injection(code_input)
-
-            
-            # this lists and collects messages about detected vulnerabilities.
-            vulnerability_messages = []
-            
-            # format messages for XSS vulnerabilities
-            if xss_vulnerabilities and xss_vulnerabilities[0]['description'] != "No XSS vulnerabilities detected.":
-                xss_message = 'Cross Site Scripting Vulnerabilities Detected:\n' + \
-                              '\n'.join(f"{vuln['description']} (Severity: {vuln['severity']}) - {vuln['remediation']}"
-                                        for vuln in xss_vulnerabilities)
-                vulnerability_messages.append(xss_message)
-            elif not xss_vulnerabilities or xss_vulnerabilities[0]['description'] == "No XSS vulnerabilities detected.":
-                vulnerability_messages.append("No XSS vulnerabilities detected.")
-
-            # SQL Injection vulnerabilities are formatted into a message if any are detected. 
-            # This is important for informing users about the security vul in their SQL queries.
-            if sql_injection_vulnerabilities and sql_injection_vulnerabilities[0]['description'] != "No SQL Injection vulnerabilities detected.":
-                sql_message = 'SQL Injection Vulnerabilities Detected:\n' + \
-                              '\n'.join(f"{vuln['description']} (Severity: {vuln['severity']}) - {vuln['remediation']}"
-                                        for vuln in sql_injection_vulnerabilities)
-                vulnerability_messages.append(sql_message)
-            elif not sql_injection_vulnerabilities or sql_injection_vulnerabilities[0]['description'] == "No SQL Injection vulnerabilities detected.":
-                vulnerability_messages.append("No SQL Injection vulnerabilities detected.")
-
-            # combines all vulnerability messages into a single string to be displayed on the scanner page.
-            vulnerability_message = '\n\n'.join(vulnerability_messages)
-
-            # this renders the 'scanner.html' template, passing the username, compiled vulnerability messages.
-            return render(request, 'scanner.html', {
-                'username': request.user.username,
-                'vulnerability_message': vulnerability_message,
-                'code_input': code_input
-            })
-        else:
-            # if the request method is not POST, the scanner page is simply re-rendered without any scanning operation.
-            return render(request, 'scanner.html', {'username': request.user.username})
-    else:
-        # Redirects to the login page if the user is not authenticated. 
-        return redirect('login')
-
-
-def has_xss_vulnerability(code_input):
-    # function to detect basic XSS vulnerabilities
-    escaped_code = escape(code_input)
-    # this return True if the sanitized code is different from the original, indicating potential XSS vulnerabilities.
-    return escaped_code != code_input
-
-
  
 def custom_404(request, exception):
     return render(request, '404.html', status=404)
-
-
-
-
-
-
 
 
 # logs out the user and redirects them to the home page.
@@ -1081,57 +988,3 @@ def signout(request):
     logout(request) # uses logout function to terminate the user session.
     return redirect('home') # after logging out, redirect the user to the home page.
 
-@login_required
-def xss_page(request):
-    # renders and return the XSS information page to the user.
-    return render(request, 'xss.html')
-
-@login_required
-def sql_injection_page(request):
-    # render and return the SQL Injection information page to the user.
-    return render(request, 'sqlinjection.html')
-
-@login_required
-def csrf_page(request):
-    # render and return the CSRF (Cross-Site Request Forgery) information page to the user.
-    return render(request, 'csrf.html')
-
-
- 
-
-@csrf_exempt
-def port_scanner(request):
-    if request.method == 'POST':
-        hostname = request.POST.get('hostname')
-
-        if not hostname:
-            return JsonResponse({'error': 'Hostname is required'}, status=400)
-
-        nm = nmap.PortScanner()
-
-        try:
-            nm.scan(hostname, '1-1024')
-
-            scan_data = {}
-            for host in nm.all_hosts():
-                scan_data[host] = {
-                    'hostname': nm[host].hostname(),
-                    'state': nm[host].state(),
-                    'open_ports': []
-                }
-
-                for proto in nm[host].all_protocols():
-                    lport = nm[host][proto].keys()
-                    for port in lport:
-                        scan_data[host]['open_ports'].append({
-                            'port': port,
-                            'state': nm[host][proto][port]['state'],
-                            'service': nm[host][proto][port]['name']
-                        })
-            print( 'scaned_ports: ',scan_data)
-            return JsonResponse(scan_data)
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
