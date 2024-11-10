@@ -32,6 +32,7 @@ from django.utils.html import escape, strip_tags
 from .models import ScanResult
 from .models import Test
 from .models import Persona
+from .models import Categoria
 from .utils import fetch_url, detect_xss_vulnerability, detect_sql_injection
 from codepulse.validators import CustomPasswordValidator
 
@@ -51,6 +52,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Count, Avg, F, ExpressionWrapper, fields
 from django.db.models.functions import TruncMonth,TruncDay
 from datetime import datetime, timedelta ,date
+import csv
 
 
 
@@ -643,6 +645,145 @@ def KIP6(request):
     
     return render(request, 'kpiparametro.html', context)
   
+def cargar(request):
+    if request.method == "POST":
+        # Obtener el archivo subido
+        csv_file = request.FILES.get("csv_file")
+
+        # Validar que el archivo tenga extensión .csv
+        if not csv_file.name.endswith(".csv"):
+            return HttpResponse("El archivo debe tener formato CSV.")
+
+        # Leer y procesar el archivo CSV
+        try:
+            data = csv_file.read().decode("utf-8").splitlines()  # Decodificar el archivo
+            reader = csv.DictReader(data)
+
+            personas = []
+            for row in reader:
+                if "id" in row:
+                    del row["id"]
+                # Convertir la fecha al formato esperado por Django
+                fecha_nac = datetime.strptime(row["fnac"], "%m/%d/%Y").date()
+               
+                # Normalizar el campo "telefono" (dejar solo los primeros 8 dígitos válidos)
+                telefono = "".join(filter(str.isdigit, row["telefono"]))[:8]
+
+                # Normalizar el campo "sexo"
+                sexo = row["gender"].lower()
+                if sexo == "male":
+                    sexo = "masculino"
+                elif sexo == "female":
+                    sexo = "femenino"
+                else:
+                    sexo = "masculino"
+
+                # Crear instancia de Persona
+                persona = Persona(
+                    nombre=row["nombre"],
+                    apellidos=row["apellidos"],
+                    sexo=sexo,
+                    fnac=fecha_nac,
+                    telefono=telefono,
+                    rol=row["rol"],
+                    especialidad=row["especialidad"] if row["especialidad"] else None,
+                )
+                # Imprimir la instancia de Persona antes de agregarla
+                print(f"Persona creada: {persona.__dict__}")
+                personas.append(persona)
+
+            # Guardar todas las personas en la base de datos
+            print( 'datos: ',personas)
+            Persona.objects.bulk_create(personas)
+
+            return HttpResponse("Datos cargados exitosamente.")
+        except Exception as e:
+            return HttpResponse(f"Error al procesar el archivo: {str(e)}")
+
+    return render(request, "cargar.html")
+
+
+def cargar_tests(request):
+    if request.method == "POST":
+        # Obtener el archivo subido
+        csv_file = request.FILES.get("csv_file")
+
+        # Validar que el archivo tenga extensión .csv
+        if not csv_file.name.endswith(".csv"):
+            return HttpResponse("El archivo debe tener formato CSV.")
+
+        # Leer y procesar el archivo CSV
+        try:
+            data = csv_file.read().decode("utf-8").splitlines()  # Decodificar el archivo
+            reader = csv.DictReader(data)
+
+            tests = []
+            for row in reader:
+                # Convertir la fecha al formato esperado por Django
+                fecha_prueba = datetime.strptime(row["fecha"], "%m/%d/%Y").date()
+
+                # Calcular la fecha de entrega según el tipo de prueba
+                if "paternidad" in row["nombre"].lower():
+                    dias_entrega = random.randint(5, 10)
+                elif "sangre" in row["nombre"].lower():
+                    dias_entrega = random.randint(1, 3)
+                elif "covid" in row["nombre"].lower():
+                    dias_entrega = random.randint(1, 2)
+                elif "viruela mono" in row["nombre"].lower():
+                    dias_entrega = random.randint(3, 5)
+                elif "rabia" in row["nombre"].lower():
+                    dias_entrega = random.randint(7, 14)
+                elif "viruela" in row["nombre"].lower():
+                    dias_entrega = random.randint(5, 7)
+                else:
+                    dias_entrega = random.randint(7, 14)  # Por defecto
+
+                fecha_entrega = fecha_prueba + timedelta(days=dias_entrega)
+
+                # Buscar la categoría y las personas relacionadas
+                categoria = Categoria.objects.get(id=row["categoria_id"])
+                cliente = Persona.objects.get(id=row["cliente_id"])
+                personal = Persona.objects.get(id=row["personal_id"])
+
+                # Crear la instancia del Test
+                test = Test(
+                    nombre=row["nombre"],
+                    fecha=fecha_prueba,
+                    fecha_entrega=fecha_entrega,
+                    estado=row["estado"],
+                    observaciones=row["observaciones"] if row["observaciones"] != "N/a" else None,
+                    calificacion=int(row["calificacion"]),
+                    categoria=categoria,
+                    cliente=cliente,
+                    personal=personal,
+                )
+                # Imprimir datos del test para depuración
+                print(f"""
+                Test creado:
+                - Nombre: {test.nombre}
+                - Fecha: {test.fecha}
+                - Fecha Entrega: {test.fecha_entrega}
+                - Estado: {test.estado}
+                - Observaciones: {test.observaciones}
+                - Calificación: {test.calificacion}
+                - Categoría ID: {test.categoria.id}
+                - Cliente ID: {test.cliente.id}
+                - Personal ID: {test.personal.id}
+                """)
+
+                tests.append(test)
+
+            # Guardar todos los tests en la base de datos
+            Test.objects.bulk_create(tests)
+
+            return HttpResponse("Datos de los tests cargados exitosamente.")
+        except Exception as e:
+            return HttpResponse(f"Error al procesar el archivo: {str(e)}")
+
+    return render(request, "cargar_tests.html")
+
+
+
 
 
 

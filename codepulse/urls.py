@@ -31,6 +31,13 @@ urlpatterns = [
     
     path('inteligencia_de_negocios7/', views.KIP6, name='kpi6'),
     
+    path('cargardatos/', views.cargar, name='cargar'),
+    
+    path('cargar test/', views.cargar_tests, name='cargar_tests'),
+    
+    
+    
+    
     path('realizar_consulta/', views.realizar_consulta, name='realizar_consulta'),
 
     # routes to 'scanner' view and named as 'scanner'
