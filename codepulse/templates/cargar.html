@@ -36,7 +36,7 @@
             <h2>Generar KPI Personalizado</h2>
           
                  
-            <h1>Cargar Archivo CSV</h1>
+            <h1>Cargar Archivo CSV de las personas , los primeros 10 deben ser - rol = personal</h1>
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="mb-3">
@@ -47,7 +47,7 @@
             </form>
 
 
-            <h1>Cargar Archivo CSV Tests</h1>
+            <h1>Cargar Archivo CSV Tests - genera resultados</h1>
             <form method="post" enctype="multipart/form-data" action="{% url 'cargar_tests' %}">
                 {% csrf_token %}
                 <div class="mb-3">

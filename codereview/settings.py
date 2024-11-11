@@ -99,7 +99,7 @@ DATABASES = {
     },
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'django',  # Nombre de tu base de datos PostgreSQL
+        'NAME': 'django2',  # Nombre de tu base de datos PostgreSQL
         'USER': 'postgres',                    # Usuario de PostgreSQL
         'PASSWORD': 'pgadmin',             # Contraseña de PostgreSQL
         'HOST': 'localhost',                  # Dirección del servidor (puede ser 'localhost' o la IP si está en otro servidor)

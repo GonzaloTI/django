@@ -22,6 +22,7 @@ from email.mime.text import MIMEText
 from .models import Test
 from .models import Persona
 from .models import Categoria
+from .models import Resultado
 from codepulse.validators import CustomPasswordValidator
 
 # Import standard libraries and third-party libraries for additional functionalities.
@@ -672,14 +673,15 @@ def cargar(request):
                     fnac=fecha_nac,
                     telefono=telefono,
                     rol=row["rol"],
-                    especialidad=row["especialidad"] if row["especialidad"] else None,
+                    #especialidad=row["especialidad"] if row["especialidad"] else None,
+                    especialidad=None,
                 )
                 # Imprimir la instancia de Persona antes de agregarla
                 print(f"Persona creada: {persona.__dict__}")
                 personas.append(persona)
 
             # Guardar todas las personas en la base de datos
-            print( 'datos: ',personas)
+            #print( 'datos: ',personas)
             Persona.objects.bulk_create(personas)
 
             return HttpResponse("Datos cargados exitosamente.")
@@ -704,32 +706,46 @@ def cargar_tests(request):
             reader = csv.DictReader(data)
 
             tests = []
+            resultados = []
             for row in reader:
                 # Convertir la fecha al formato esperado por Django
                 fecha_prueba = datetime.strptime(row["fecha"], "%m/%d/%Y").date()
 
-                # Calcular la fecha de entrega según el tipo de prueba
-                if "paternidad" in row["nombre"].lower():
-                    dias_entrega = random.randint(5, 10)
-                elif "sangre" in row["nombre"].lower():
-                    dias_entrega = random.randint(1, 3)
-                elif "covid" in row["nombre"].lower():
+                if "covid" in row["nombre"].lower():
                     dias_entrega = random.randint(1, 2)
-                elif "viruela mono" in row["nombre"].lower():
+                elif "paternidad" in row["nombre"].lower():
+                    dias_entrega = random.randint(5, 10)
+                elif "hemograma" in row["nombre"].lower():
+                    dias_entrega = random.randint(1, 3)
+                elif "influenza" in row["nombre"].lower():
+                    dias_entrega = random.randint(2, 4)
+                elif "alergia" in row["nombre"].lower():
+                    dias_entrega = random.randint(3, 7)
+                elif "electrocardiograma" in row["nombre"].lower():
+                    dias_entrega = random.randint(1, 2)
+                elif "anticuerpo" in row["nombre"].lower():
                     dias_entrega = random.randint(3, 5)
-                elif "rabia" in row["nombre"].lower():
-                    dias_entrega = random.randint(7, 14)
-                elif "viruela" in row["nombre"].lower():
-                    dias_entrega = random.randint(5, 7)
+                elif "hepatitis" in row["nombre"].lower():
+                    dias_entrega = random.randint(5, 10)
                 else:
-                    dias_entrega = random.randint(7, 14)  # Por defecto
+                    dias_entrega = random.randint(7, 14)  # Por defecto para pruebas no especificadas
 
                 fecha_entrega = fecha_prueba + timedelta(days=dias_entrega)
 
                 # Buscar la categoría y las personas relacionadas
                 categoria = Categoria.objects.get(id=row["categoria_id"])
-                cliente = Persona.objects.get(id=row["cliente_id"])
-                personal = Persona.objects.get(id=row["personal_id"])
+                try:
+                    cliente = Persona.objects.get(id=row["cliente_id"])
+                except Persona.DoesNotExist:
+                    cliente_id = random.randint(1000, 3000)
+                    cliente = Persona(id=cliente_id, nombre=f"Cliente-{cliente_id}")  # Creando un cliente temporal
+
+                # Obtener el personal
+                try:
+                    personal = Persona.objects.get(id=row["personal_id"])
+                except Persona.DoesNotExist:
+                    personal_id = random.randint(1000, 2000)
+                    personal = Persona(id=personal_id, nombre=f"Personal-{personal_id}") 
 
                 # Crear la instancia del Test
                 test = Test(
@@ -744,6 +760,25 @@ def cargar_tests(request):
                     personal=personal,
                 )
                 # Imprimir datos del test para depuración
+                
+                #para crear los resultados, se toman el nombre y se generan resutlados leatorios por codigo
+                
+                 # Generar el resultado del test
+                resultado_text, interpretacion, detalles = generar_resultado(test.nombre)
+
+                # Crear la instancia de Resultado
+                resultado = Resultado(
+                    test=test,
+                    resultado=resultado_text,
+                    fecha=fecha_entrega,
+                    observaciones="N/a",
+                    interpretacion=interpretacion,
+                    detalles=detalles,
+                    url_imagen_path=None,
+                )
+                resultados.append(resultado)
+                
+                
                 print(f"""
                 Test creado:
                 - Nombre: {test.nombre}
@@ -758,9 +793,11 @@ def cargar_tests(request):
                 """)
 
                 tests.append(test)
+                print(f"Resultado creado: {resultado.__dict__}")
 
             # Guardar todos los tests en la base de datos
             Test.objects.bulk_create(tests)
+            Resultado.objects.bulk_create(resultados)
 
             return HttpResponse("Datos de los tests cargados exitosamente.")
         except Exception as e:
@@ -768,8 +805,48 @@ def cargar_tests(request):
 
     return render(request, "cargar_tests.html")
 
+# Función para generar el resultado del test
+def generar_resultado(nombre_test):
+    nombre_test = nombre_test.lower()
 
+    if "covid" in nombre_test:
+        resultado = random.choice(["Negativo", "Positivo"])
+        interpretacion = "Infección activa" if resultado == "Positivo" else "No se detectó el virus"
+        detalles = "Prueba PCR realizada correctamente."
+    elif "paternidad" in nombre_test:
+        resultado = random.choice(["Inclusión", "Exclusión"])
+        interpretacion = "Coincidencia de marcadores genéticos" if resultado == "Inclusión" else "No hay relación biológica"
+        detalles = "Prueba de ADN realizada con precisión."
+    elif "hemograma" in nombre_test:
+        resultado = "Normal" if random.random() > 0.2 else "Anormal"
+        interpretacion = "Valores dentro de los rangos esperados" if resultado == "Normal" else "Anemia detectada"
+        detalles = "Conteo completo de células sanguíneas."
+    elif "influenza" in nombre_test:
+        resultado = random.choice(["Negativo", "Positivo"])
+        interpretacion = "Infección viral activa" if resultado == "Positivo" else "No se detectó el virus"
+        detalles = "Prueba rápida de influenza."
+    elif "alergia" in nombre_test:
+        resultado = random.choice(["Sin alergias", "Alergias detectadas"])
+        interpretacion = "Reacción alérgica" if resultado == "Alergias detectadas" else "Sin reacciones"
+        detalles = "Panel de alérgenos completado."
+    elif "electrocardiograma" in nombre_test:
+        resultado = random.choice(["Normal", "Anormal"])
+        interpretacion = "Ritmo cardíaco regular" if resultado == "Normal" else "Arritmia detectada"
+        detalles = "ECG realizado sin complicaciones."
+    elif "anticuerpo" in nombre_test:
+        resultado = random.choice(["Positivo", "Negativo"])
+        interpretacion = "Presencia de anticuerpos" if resultado == "Positivo" else "No se detectaron anticuerpos"
+        detalles = "Prueba serológica completada."
+    elif "hepatitis" in nombre_test:
+        resultado = random.choice(["Negativo", "Positivo"])
+        interpretacion = "Infección detectada" if resultado == "Positivo" else "No se detectó infección"
+        detalles = "Análisis para hepatitis realizado."
+    else:
+        resultado = "Indeterminado"
+        interpretacion = "No se pudo interpretar el resultado"
+        detalles = "Datos insuficientes para el análisis."
 
+    return resultado, interpretacion, detalles
 
 
 
