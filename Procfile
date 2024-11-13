@@ -1,1 +1,1 @@
-web: gunicorn codepulse.wsgi --bind 0.0.0.0:$PORT
+web: python manage.py makemigrations && python manage.py migrate && gunicorn proydjango.wsgi --bind 0.0.0.0:$PORT
